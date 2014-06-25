@@ -1,0 +1,42 @@
+#!/bin/sh
+# fstream script configuration
+
+# Daemon user
+user=fstream
+
+# The stream address, try to keep it in the vlc_sout variable if you 
+# want to change it.
+stream_address="0.0.0.0:8888"
+
+# This could be a playlist, directory, streaming all that VLC can play.
+#play_item=
+play_item="rtp://127.0.0.1:8000"
+
+# Log file
+logfile=/var/log/fstream/default.log
+
+# How verboity is needed, for debug use 3, for none use 0
+verbosity_level=2
+
+# PID directory for fstream.pid file
+piddir=/var/run
+
+# VLC Interface options (https://wiki.videolan.org/Interfaces/)
+# Network compatible interfaces are detected and you can assign address
+#vlc_intf="http,telnet"
+#vlc_intf_http_address="127.0.0.1:80"
+#vlc_intf_rc_address="127.0.0.1:1024"
+#vlc_intf_cli_address="127.0.0.1:2048"
+#vlc_intf_telnet_address="127.0.0.1:23"
+
+# VLC sout (default is a vorb radio example)
+vlc_sout="#transcode{acodec=vorb,channels=2,ab=128,samplerate=44100}:std{access=http,mux=ogg,dst=$stream_address}"
+
+# VLC additional options to use
+#
+# If you have problems with the volume of the songs try
+# vlc_opts="--norm-buff-size 3 --norm-max-level 8"
+# 
+# If you have problems restreaming a network dump, try
+# vlc_opts="--network-caching=0"
+vlc_opts="--network-caching=0 --norm-buff-size 3 --norm-max-level 8"

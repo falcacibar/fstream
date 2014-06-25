@@ -1,0 +1,89 @@
+#!/bin/sh
+# fstream 1.1 -  VLC based stream server 
+# Felipe Alcacibar <falcacibar@gmail.com>
+
+# Static variables
+me="fstream"
+
+# Changeable variables
+test -z "${user}"     && user="${me}"
+test -z "${piddir}"   && piddir="/var/run"
+test -z "${vlc_bin}"  && vlc_bin="/usr/bin/vlc"
+
+# Dependant variables
+pidfile="${piddir}/${me}.pid"
+
+alias rm_log_fifo="(rm -f ${logfile}.fifo ${pidfile}.fifo;[ -f ${pidfile}.fifo ] && kill -9 \$(cat ${pidfile}.fifo)) 2> /dev/null"
+alias mk_log_fifo="mkfifo --mode 660 ${logfile}.fifo;chown ${user} ${logfile}.fifo"
+
+log_settings() {
+    if [ ! -z "${logfile}" ]; then
+        log_opts="--logfile ${logfile}.fifo --logmode text --file-logging --log-verbose=$verbosity_level"
+        intf_opts="--extraintf=logger"
+        su "$user" -c "test -w $(dirname "${logfile}")"
+
+        if [ "$?" -eq "0" ]; then
+            rm_log_fifo
+            mk_log_fifo
+
+            # fifo hack for logging, jut for timestamps
+            ( logger < ${logfile}.fifo )  &
+            echo $! > ${pidfile}.fifo
+        else
+            cend 1
+            cinfo "The logfile directory is not writeable by the user ${user}" 
+            exit 1
+        fi
+    fi
+}
+
+logger() {
+    if [ -z "${logfile}" ]; then
+        > /dev/null
+    else
+        while read log; do 
+            date +"%Y %b %d %H:%M:%S $(hostname) [$me] ${log}" >> ${logfile} 
+        done
+    fi
+}
+
+intf_settings() {
+    for intf in $(echo $vlc_intf | xargs -d, echo); do
+        intf_opts="${intf_opts} --extraintf=$intf"
+
+        case $intf in
+            rc|http|telnet|cli)
+                local intf_host_var="$(eval echo \$vlc_intf_${intf}_address)"
+
+                if [ ! -z "${intf_host_var}" ]; then
+                    intf_opts="${intf_opts} --${intf}-host=${intf_host_var}"
+                fi
+            ;;
+        esac
+    done
+}
+
+start() {
+    cbegin "Starting fstream server instance"
+
+    log_settings
+    intf_settings
+
+    start-stop-daemon --start -o -q -b -m -p "${pidfile}" -c ${user} -x $vlc_bin -- \
+            -Z -L "${play_item}" \
+            -q -I dummy \
+            --sout-keep --sout "${vlc_sout}" \
+            ${verbosity_opts} \
+            ${intf_opts} \
+            ${log_opts} \
+            ${vlc_opts} 
+    cend $?
+}
+
+stop() {
+    cbegin "Stopping fstream server instance"
+    start-stop-daemon --stop -q -p "${pidfile}" -x $vlc_bin
+    end=$?
+    rm_log_fifo
+    cend $end
+}
