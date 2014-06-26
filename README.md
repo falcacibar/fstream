@@ -8,7 +8,7 @@ The script is maded with [CrossRC framrwork](http://github.com/falcacibar/crossr
 Build and Install (*)
 ---------------------
 
-    $ git clone https://github.com/falcacibar/fstream
+    $ git clone --recursive https://github.com/falcacibar/fstream
     $ cd fstream
     $ build/crossrc build install
     
